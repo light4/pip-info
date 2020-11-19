@@ -3,6 +3,7 @@
 Show python package info.
 
 * Dependencies free, only Python3.
+* Single file.
 
 # Usage
 
