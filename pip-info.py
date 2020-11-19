@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
+import argparse
+import json
 import socket
 import urllib.request
 from dataclasses import dataclass
-import argparse
-
-import yaml
 
 # timeout in seconds
 timeout = 10
@@ -16,10 +15,12 @@ class PipInfoError(Exception):
     pass
 
 
-@dataclass
-class AppArgs(object):
-    pkg_name: str
-    urls: bool
+class ServerError(PipInfoError):
+    pass
+
+
+class PkgNotFound(PipInfoError):
+    pass
 
 
 @dataclass
@@ -59,14 +60,14 @@ class PkgBriefInfo(object):
 
 def get_pkg_json(pkg: str):
     url = 'https://pypi.org/pypi/{}/json'.format(pkg)
-    content = None
-    with urllib.request.urlopen(url) as f:
-        if f.status >= 400:
-            raise PipInfoError('request {} failed'.format(url))
-        content = f.read()
-    if content is None:
-        raise PipInfoError('request {} empty'.format(url))
-    return yaml.safe_load(content)
+    try:
+        with urllib.request.urlopen(url) as f:
+            return json.load(f)
+    except urllib.request.HTTPError as e:
+        if e.code >= 500:
+            raise ServerError('request {} failed'.format(url))
+        elif e.code >= 400:
+            raise PkgNotFound('request {}: {}'.format(url, e.reason))
 
 
 def parse_pkg_brief_info(content):
@@ -84,7 +85,10 @@ def parse_pkg_brief_info(content):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='pip-info: show python package info.')
-    parser.add_argument('pkg_names', metavar='pkg_name', type=str, nargs='+',
+    parser.add_argument('pkg_names',
+                        metavar='pkg_name',
+                        type=str,
+                        nargs='+',
                         help='show info of multiple packages')
     args = parser.parse_args()
     return args
@@ -93,7 +97,11 @@ def parse_args():
 def main():
     args = parse_args()
     for pkg in args.pkg_names:
-        json_content = get_pkg_json(pkg)
+        try:
+            json_content = get_pkg_json(pkg)
+        except PipInfoError as e:
+            print(e)
+            continue
         info = parse_pkg_brief_info(json_content)
         info.show()
         print()
