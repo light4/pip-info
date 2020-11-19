@@ -50,11 +50,11 @@ class PkgBriefInfo(object):
         for k in self.__dataclass_fields__:
             v = getattr(self, k)
             if isinstance(v, list):
-                print("{:<8}:".format(k.title()))
+                print("{:<16}:".format(k.title()))
                 for i in v:
                     print("    - {}".format(i))
             else:
-                print("{:<8}: {}".format(k.title(), v))
+                print("{:<16}: {}".format(k.title(), v))
 
 
 def get_pkg_json(pkg: str):
